@@ -861,7 +861,7 @@ public class ServerWebSocketContainer implements ServerContainer, Closeable {
     public synchronized void pause(PauseListener listener) {
         closed = true;
         if(configuredServerEndpoints.isEmpty()) {
-            listener.paused();
+            if (listener != null) listener.paused();
             return;
         }
         if(listener != null) {
