@@ -18,6 +18,16 @@
 
 package io.undertow.server.protocol.http2;
 
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.util.Iterator;
+import java.util.Map.Entry;
+import java.util.SortedMap;
+import java.util.TreeMap;
+import java.util.concurrent.LinkedBlockingDeque;
+import java.util.concurrent.TimeUnit;
+
 import io.netty.bootstrap.Bootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.channel.Channel;
@@ -63,7 +73,6 @@ import io.undertow.Undertow;
 import io.undertow.UndertowOptions;
 import io.undertow.server.HttpHandler;
 import io.undertow.server.HttpServerExchange;
-import io.undertow.server.session.SessionCookieConfig;
 import io.undertow.testutils.DefaultServer;
 import io.undertow.testutils.HttpOneOnly;
 import io.undertow.util.Headers;
@@ -74,16 +83,6 @@ import org.junit.BeforeClass;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.xnio.Options;
-
-import java.net.URI;
-import java.net.URISyntaxException;
-import java.nio.charset.StandardCharsets;
-import java.util.Iterator;
-import java.util.Map.Entry;
-import java.util.SortedMap;
-import java.util.TreeMap;
-import java.util.concurrent.LinkedBlockingDeque;
-import java.util.concurrent.TimeUnit;
 
 /**
  * Tests the load balancing proxy
@@ -102,7 +101,6 @@ public class HTTP2ViaUpgradeTestCase {
 
     @BeforeClass
     public static void setup() throws URISyntaxException {
-        final SessionCookieConfig sessionConfig = new SessionCookieConfig();
         int port = DefaultServer.getHostPort("default");
         server = Undertow.builder()
                 .addHttpListener(port + 1, DefaultServer.getHostAddress("default"))
@@ -165,7 +163,6 @@ public class HTTP2ViaUpgradeTestCase {
             request.headers().add(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.GZIP);
             request.headers().add(HttpHeaderNames.ACCEPT_ENCODING, HttpHeaderValues.DEFLATE);
             channel.writeAndFlush(request);
-            streamId += 2;
             promise.await(10, TimeUnit.SECONDS);
             Assert.assertEquals(message, messages.poll());
             System.out.println("Finished HTTP/2 request(s)");
