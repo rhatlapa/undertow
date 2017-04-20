@@ -149,7 +149,7 @@ public class JsrWebsocketExtensionTestCase {
         for(int j = 0; j < MSG_COUNT; ++ j) {
 
             WebSockets.sendTextBlocking(message, clientChannel);
-            String res = resultQueue.poll(3, TimeUnit.SECONDS);
+            String res = resultQueue.poll(5, TimeUnit.SECONDS);
             Assert.assertEquals(message, res);
         }
 
