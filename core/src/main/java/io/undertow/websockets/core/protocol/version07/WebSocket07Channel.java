@@ -237,9 +237,10 @@ public class WebSocket07Channel extends WebSocketChannel {
                         if (WebSocketLogger.REQUEST_LOGGER.isDebugEnabled()) {
                             WebSocketLogger.REQUEST_LOGGER.decodingFrameWithOpCode(frameOpcode);
                         }
-                        state = State.READING_SECOND;
                         // clear the lengthBuffer to reuse it later
                         lengthBuffer.clear();
+
+                        state = State.READING_SECOND;
                     case READING_SECOND:
                         if (!buffer.hasRemaining()) {
                             return;
