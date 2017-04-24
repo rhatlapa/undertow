@@ -18,30 +18,32 @@
 
 package io.undertow.testutils;
 
-import static io.undertow.server.handlers.ResponseCodeHandler.HANDLE_404;
-import static org.xnio.Options.SSL_CLIENT_AUTH_MODE;
-import static org.xnio.SslClientAuthMode.REQUESTED;
-
-import java.io.IOException;
-import java.io.InputStream;
-import java.net.Inet4Address;
-import java.net.InetSocketAddress;
-import java.net.URI;
-import java.security.KeyManagementException;
-import java.security.KeyStore;
-import java.security.KeyStoreException;
-import java.security.NoSuchAlgorithmException;
-import java.security.UnrecoverableKeyException;
-import java.security.cert.CertificateException;
-import javax.net.ssl.KeyManager;
-import javax.net.ssl.KeyManagerFactory;
-import javax.net.ssl.SSLContext;
-import javax.net.ssl.SSLEngine;
-import javax.net.ssl.TrustManager;
-import javax.net.ssl.TrustManagerFactory;
-
+import io.undertow.UndertowLogger;
+import io.undertow.UndertowOptions;
+import io.undertow.connector.ByteBufferPool;
+import io.undertow.protocols.alpn.ALPNManager;
 import io.undertow.protocols.alpn.ALPNProvider;
 import io.undertow.protocols.alpn.JettyAlpnProvider;
+import io.undertow.protocols.ssl.UndertowXnioSsl;
+import io.undertow.security.impl.GSSAPIAuthenticationMechanism;
+import io.undertow.server.DefaultByteBufferPool;
+import io.undertow.server.HttpHandler;
+import io.undertow.server.HttpServerExchange;
+import io.undertow.server.OpenListener;
+import io.undertow.server.handlers.ProxyPeerAddressHandler;
+import io.undertow.server.handlers.RequestDumpingHandler;
+import io.undertow.server.handlers.SSLHeaderHandler;
+import io.undertow.server.handlers.proxy.LoadBalancingProxyClient;
+import io.undertow.server.handlers.proxy.ProxyHandler;
+import io.undertow.server.protocol.ajp.AjpOpenListener;
+import io.undertow.server.protocol.http.AlpnOpenListener;
+import io.undertow.server.protocol.http.HttpOpenListener;
+import io.undertow.server.protocol.http2.Http2OpenListener;
+import io.undertow.server.protocol.http2.Http2UpgradeHandler;
+import io.undertow.util.Headers;
+import io.undertow.util.NetworkUtils;
+import io.undertow.util.SingleByteStreamSinkConduit;
+import io.undertow.util.SingleByteStreamSourceConduit;
 import org.junit.Assume;
 import org.junit.Ignore;
 import org.junit.runner.Description;
@@ -64,30 +66,28 @@ import org.xnio.Xnio;
 import org.xnio.XnioWorker;
 import org.xnio.channels.AcceptingChannel;
 import org.xnio.ssl.XnioSsl;
-import io.undertow.UndertowLogger;
-import io.undertow.UndertowOptions;
-import io.undertow.connector.ByteBufferPool;
-import io.undertow.protocols.alpn.ALPNManager;
-import io.undertow.protocols.ssl.UndertowXnioSsl;
-import io.undertow.security.impl.GSSAPIAuthenticationMechanism;
-import io.undertow.server.DefaultByteBufferPool;
-import io.undertow.server.HttpHandler;
-import io.undertow.server.HttpServerExchange;
-import io.undertow.server.OpenListener;
-import io.undertow.server.handlers.ProxyPeerAddressHandler;
-import io.undertow.server.handlers.RequestDumpingHandler;
-import io.undertow.server.handlers.SSLHeaderHandler;
-import io.undertow.server.handlers.proxy.LoadBalancingProxyClient;
-import io.undertow.server.handlers.proxy.ProxyHandler;
-import io.undertow.server.protocol.ajp.AjpOpenListener;
-import io.undertow.server.protocol.http.AlpnOpenListener;
-import io.undertow.server.protocol.http.HttpOpenListener;
-import io.undertow.server.protocol.http2.Http2OpenListener;
-import io.undertow.server.protocol.http2.Http2UpgradeHandler;
-import io.undertow.util.Headers;
-import io.undertow.util.NetworkUtils;
-import io.undertow.util.SingleByteStreamSinkConduit;
-import io.undertow.util.SingleByteStreamSourceConduit;
+
+import javax.net.ssl.KeyManager;
+import javax.net.ssl.KeyManagerFactory;
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLEngine;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
+import java.io.IOException;
+import java.io.InputStream;
+import java.net.Inet4Address;
+import java.net.InetSocketAddress;
+import java.net.URI;
+import java.security.KeyManagementException;
+import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
+import java.security.UnrecoverableKeyException;
+import java.security.cert.CertificateException;
+
+import static io.undertow.server.handlers.ResponseCodeHandler.HANDLE_404;
+import static org.xnio.Options.SSL_CLIENT_AUTH_MODE;
+import static org.xnio.SslClientAuthMode.REQUESTED;
 
 /**
  * A class that starts a server before the test suite. By swapping out the root handler
@@ -262,6 +262,7 @@ public class DefaultServer extends BlockJUnit4ClassRunner {
                     } catch (InterruptedException e) {
                         throw new RuntimeException(e);
                     }
+                    UndertowLogger.ROOT_LOGGER.debug("Buffers still after test finished: " + DebuggingSlicePool.BUFFERS.toString());
                     for (DebuggingSlicePool.DebuggingBuffer b : DebuggingSlicePool.BUFFERS) {
                         b.getAllocationPoint().printStackTrace();
                         notifier.fireTestFailure(new Failure(description, new RuntimeException("Buffer Leak " + b.getLabel(), b.getAllocationPoint())));
