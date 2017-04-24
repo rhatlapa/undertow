@@ -53,6 +53,7 @@ public class DebuggingSlicePool implements ByteBufferPool{
     @Override
     public void close() {
         delegate.close();
+        arrayBacked.close();
     }
 
     @Override
